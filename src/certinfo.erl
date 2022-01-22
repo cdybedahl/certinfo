@@ -23,9 +23,12 @@ main([Host, Port0]) ->
             Extensions = Cert#'OTPTBSCertificate'.extensions,
             Validity = Cert#'OTPTBSCertificate'.validity,
             NotBefore = str2datetime(Validity#'Validity'.notBefore),
+            TimeSince = time_diff(NotBefore),
             NotAfter = str2datetime(Validity#'Validity'.notAfter),
-            io:format("Not valid before: ~s~n", [datetime2str(NotBefore)]),
-            io:format("Not valid after: ~s~n", [datetime2str(NotAfter)]),
+            InTime = time_diff(NotAfter),
+            io:format("Validity:~n"),
+            io:format("  Start: ~s (~s local time).~n", [TimeSince, datetime2str(NotBefore)]),
+            io:format("  End:   ~s (~s local time).~n", [InTime, datetime2str(NotAfter)]),
             SAN = lists:keyfind({2, 5, 29, 17}, 2, Extensions),
             Names = lists:map(fun({dNSName, Name}) -> Name end, SAN#'Extension'.extnValue),
             io:format("~nSubject names:~n"),
@@ -66,6 +69,17 @@ str2datetime({utcTime, S}) ->
 datetime2str(UT) ->
     LT = calendar:universal_time_to_local_time(UT),
     {{Year, Month, Day}, {Hour, Minute, Second}} = LT,
-    io_lib:format("~b-~2..0b-~2..0b ~2..0b:~2..0b:~2..0b (local time)", [
+    io_lib:format("~b-~2..0b-~2..0b ~2..0b:~2..0b:~2..0b", [
         Year, Month, Day, Hour, Minute, Second
     ]).
+
+time_diff(UT) ->
+    Then = calendar:datetime_to_gregorian_seconds(UT),
+    Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+    {Days, {H, M, S}} = calendar:seconds_to_daystime(abs(Now - Then)),
+    Format =
+        case Now > Then of
+            true -> "~b days and ~b:~2..0b:~2..0b hours ago";
+            false -> "in ~b days and ~b:~2..0b:~2..0b hours"
+        end,
+    io_lib:format(Format, [Days, H, M, S]).
