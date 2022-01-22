@@ -22,6 +22,14 @@ main([Host, Port0]) ->
             {ok, DERCert} = ssl:peercert(SSLSocket),
             OTPCert = public_key:pkix_decode_cert(DERCert, otp),
             Cert = OTPCert#'OTPCertificate'.tbsCertificate,
+            Algo = OTPCert#'OTPCertificate'.signatureAlgorithm,
+            {HashName, CryptoName} = public_key:pkix_sign_types(
+                Algo#'SignatureAlgorithm'.algorithm
+            ),
+            io:format("Algorithm:~n  ~s ~s~n~n", [
+                string:to_upper(atom_to_list(HashName)),
+                string:to_upper(atom_to_list(CryptoName))
+            ]),
             Extensions = Cert#'OTPTBSCertificate'.extensions,
             Validity = Cert#'OTPTBSCertificate'.validity,
             NotBefore = str2datetime(Validity#'Validity'.notBefore),
@@ -31,7 +39,7 @@ main([Host, Port0]) ->
             io:format("Validity:~n"),
             io:format("  Start: ~-32s (~s local time).~n", [TimeSince, datetime2str(NotBefore)]),
             io:format("  End:   ~-32s (~s local time).~n", [InTime, datetime2str(NotAfter)]),
-            SAN = lists:keyfind({2, 5, 29, 17}, 2, Extensions),
+            SAN = lists:keyfind(?'id-ce-subjectAltName', 2, Extensions),
             Names = lists:map(fun({dNSName, Name}) -> Name end, SAN#'Extension'.extnValue),
             io:format("~nSubject names:~n"),
             lists:foldl(
