@@ -10,6 +10,8 @@
 %%====================================================================
 
 %% escript Entry point
+main([]) ->
+    io:format("usage: certinfo hostname [port]~n");
 main([Host]) ->
     main([Host, "443"]);
 main([Host, Port0]) ->
