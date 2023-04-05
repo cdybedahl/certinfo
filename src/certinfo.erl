@@ -32,10 +32,12 @@ main([Host, Port0]) ->
             ]),
             Extensions = Cert#'OTPTBSCertificate'.extensions,
             Validity = Cert#'OTPTBSCertificate'.validity,
+            Issuer = Cert#'OTPTBSCertificate'.issuer,
             NotBefore = str2datetime(Validity#'Validity'.notBefore),
             TimeSince = time_diff(NotBefore),
             NotAfter = str2datetime(Validity#'Validity'.notAfter),
             InTime = time_diff(NotAfter),
+            print_issuer(Issuer),
             io:format("Validity:~n"),
             io:format("  Start: ~-32s (~s local time).~n", [TimeSince, datetime2str(NotBefore)]),
             io:format("  End:   ~-32s (~s local time).~n", [InTime, datetime2str(NotAfter)]),
@@ -93,3 +95,14 @@ time_diff(UT) ->
             false -> "in ~b days and ~b:~2..0b:~2..0b hours"
         end,
     io_lib:format(Format, [Days, H, M, S]).
+
+print_issuer(Issuer) ->
+    {rdnSequence, [
+        [{'AttributeTypeAndValue', {2, 5, 4, 6}, Country}],
+        [{'AttributeTypeAndValue', {2, 5, 4, 10}, {_, Organization}}],
+        [{'AttributeTypeAndValue', {2, 5, 4, 3}, {_, Name}}]
+    ]} = Issuer,
+    io:format(
+        "Issuer: Country=~s, Organization=~ts, CommonName=~ts~n~n",
+        [Country, Organization, Name]
+    ).
