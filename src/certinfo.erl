@@ -19,6 +19,7 @@ main([Host, Port0]) ->
     Port = erlang:list_to_integer(Port0),
     case ssl:connect(Host, Port, [{verify, verify_none}], 10_000) of
         {ok, SSLSocket} ->
+            io:setopts([{encoding, unicode}]),
             {ok, DERCert} = ssl:peercert(SSLSocket),
             OTPCert = public_key:pkix_decode_cert(DERCert, otp),
             Cert = OTPCert#'OTPCertificate'.tbsCertificate,
@@ -46,7 +47,7 @@ main([Host, Port0]) ->
             io:format("~nSubject names:~n"),
             lists:foldl(
                 fun(N, Acc) ->
-                    io:format(" ~3b: ~ts~n", [Acc, N]),
+                    io:format(" ~3b: ~ts~n", [Acc, maybe_decode(N)]),
                     Acc + 1
                 end,
                 1,
@@ -114,3 +115,11 @@ rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 11}, {_, OrganizationalU
     io_lib:format("OU=~ts", [OrganizationalUnit]);
 rdnvalue_to_string([{'AttributeTypeAndValue', OID, Data}]) ->
     io_lib:format("~tp=~tp", [OID, Data]).
+
+maybe_decode(N) ->
+    case string:find(N, "xn--") of
+        nomatch ->
+            N;
+        _ ->
+            [idna:decode(N), " (", N, ")"]
+    end.
