@@ -96,13 +96,21 @@ time_diff(UT) ->
         end,
     io_lib:format(Format, [Days, H, M, S]).
 
-print_issuer(Issuer) ->
-    {rdnSequence, [
-        [{'AttributeTypeAndValue', {2, 5, 4, 6}, Country}],
-        [{'AttributeTypeAndValue', {2, 5, 4, 10}, {_, Organization}}],
-        [{'AttributeTypeAndValue', {2, 5, 4, 3}, {_, Name}}]
-    ]} = Issuer,
+print_issuer({rdnSequence, Sequence}) ->
     io:format(
-        "Issuer: Country=~s, Organization=~ts, CommonName=~ts~n~n",
-        [Country, Organization, Name]
+        "Issuer: ~ts~n~n",
+        [lists:join(", ", [rdnvalue_to_string(S) || S <- Sequence])]
     ).
+
+rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 3}, {_, CommonName}}]) ->
+    io_lib:format("CN=~ts", [CommonName]);
+rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 6}, Country}]) ->
+    io_lib:format("Country=~ts", [Country]);
+rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 8}, {_, StateOrProvince}}]) ->
+    io_lib:format("State=~ts", [StateOrProvince]);
+rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 10}, {_, Organization}}]) ->
+    io_lib:format("O=~ts", [Organization]);
+rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 11}, {_, OrganizationalUnit}}]) ->
+    io_lib:format("OU=~ts", [OrganizationalUnit]);
+rdnvalue_to_string([{'AttributeTypeAndValue', OID, Data}]) ->
+    io_lib:format("~tp=~tp", [OID, Data]).
