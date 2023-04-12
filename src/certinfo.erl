@@ -142,11 +142,11 @@ print_extension(#'Extension'{extnID = ?'id-pe-authorityInfoAccess', extnValue = 
 print_extension(#'Extension'{extnID = {1, 3, 6, 1, 4, 1, 11129, 2, 4, 2}, extnValue = _ExtnValue}) ->
     io:format("\tSignedCertificateTimestampList.~n", []);
 print_extension(#'Extension'{extnID = ?'id-ce-basicConstraints', extnValue = ExtnValue}) ->
-    io:format("\tBasic constraints:~n"),
-    io:format("\t\tCA: ~p~n", [ExtnValue#'BasicConstraints'.cA]),
+    io:format("\tBasic constraints: "),
+    io:format(" CA ~p. ", [ExtnValue#'BasicConstraints'.cA]),
     case ExtnValue#'BasicConstraints'.pathLenConstraint of
-        asn1_NOVALUE -> io:format("\t\tNo path length constraint.~n");
-        Val -> io:format("\t\tPath length constraint: ~tp~n", [Val])
+        asn1_NOVALUE -> io:format("No path length constraint.~n");
+        Val -> io:format("Path length constraint: ~tp~n", [Val])
     end;
 print_extension(#'Extension'{extnID = ?'id-ce-certificatePolicies', extnValue = _ExtnValue}) ->
     io:format("\tCertificate policies.~n", []);
