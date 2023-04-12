@@ -37,7 +37,6 @@ process(Host, Port) ->
                 string:to_upper(atom_to_list(CryptoName))
             ]),
             Extensions = Cert#'OTPTBSCertificate'.extensions,
-            print_extensions(Extensions),
             Validity = Cert#'OTPTBSCertificate'.validity,
             Issuer = Cert#'OTPTBSCertificate'.issuer,
             NotBefore = str2datetime(Validity#'Validity'.notBefore),
@@ -58,7 +57,8 @@ process(Host, Port) ->
                 end,
                 1,
                 Names
-            );
+            ),
+            print_extensions(Extensions);
         {error, Err} ->
             io:format("Connection failed: ~p~n", [Err])
     end,
@@ -133,9 +133,9 @@ maybe_decode(N) ->
     end.
 
 print_extensions(Extensions) ->
-    io:format("Extensions:~n"),
+    io:format("~nExtensions:~n"),
     lists:foreach(fun print_extension/1, Extensions),
-    io:format("~n~n").
+    io:format("~n").
 
 print_extension(#'Extension'{extnID = ?'id-pe-authorityInfoAccess', extnValue = _ExtnValue}) ->
     io:format("\tAuthority Info Access.~n", []);
@@ -161,7 +161,7 @@ print_extension(#'Extension'{extnID = ?'id-ce-authorityKeyIdentifier'}) ->
 print_extension(#'Extension'{extnID = ?'id-ce-subjectKeyIdentifier'}) ->
     io:format("\tSubject Key Identifier.~n", []);
 print_extension(#'Extension'{extnID = ?'id-ce-subjectAltName'}) ->
-    io:format("\tSubject alternative names (see below for list).~n", []);
+    io:format("\tSubject alternative names (see above for list).~n", []);
 print_extension(E) ->
     io:format("\t~tp~n", [E#'Extension'.extnID]).
 
