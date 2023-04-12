@@ -2,6 +2,7 @@
 
 %% API exports
 -export([main/1]).
+-export([process/2]).
 
 -include_lib("public_key/include/public_key.hrl").
 
@@ -17,6 +18,10 @@ main([Host]) ->
 main([Host, Port0]) ->
     application:ensure_all_started(ssl),
     Port = erlang:list_to_integer(Port0),
+    process(Host, Port),
+    erlang:halt(0).
+
+process(Host, Port) ->
     case ssl:connect(Host, Port, [{verify, verify_none}], 10_000) of
         {ok, SSLSocket} ->
             io:setopts([{encoding, unicode}]),
@@ -32,6 +37,7 @@ main([Host, Port0]) ->
                 string:to_upper(atom_to_list(CryptoName))
             ]),
             Extensions = Cert#'OTPTBSCertificate'.extensions,
+            print_extensions(Extensions),
             Validity = Cert#'OTPTBSCertificate'.validity,
             Issuer = Cert#'OTPTBSCertificate'.issuer,
             NotBefore = str2datetime(Validity#'Validity'.notBefore),
@@ -56,7 +62,7 @@ main([Host, Port0]) ->
         {error, Err} ->
             io:format("Connection failed: ~p~n", [Err])
     end,
-    erlang:halt(0).
+    ok.
 
 %%====================================================================
 %% Internal functions
@@ -107,6 +113,8 @@ rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 3}, {_, CommonName}}]) -
     io_lib:format("CN=~ts", [CommonName]);
 rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 6}, Country}]) ->
     io_lib:format("Country=~ts", [Country]);
+rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 7}, {_, Locality}}]) ->
+    io_lib:format("Locality=~ts", [Locality]);
 rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 8}, {_, StateOrProvince}}]) ->
     io_lib:format("State=~ts", [StateOrProvince]);
 rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 10}, {_, Organization}}]) ->
@@ -123,3 +131,40 @@ maybe_decode(N) ->
         _ ->
             [idna:decode(N), " (", N, ")"]
     end.
+
+print_extensions(Extensions) ->
+    io:format("Extensions:~n"),
+    lists:foreach(fun print_extension/1, Extensions),
+    io:format("~n~n").
+
+print_extension(#'Extension'{extnID = ?'id-pe-authorityInfoAccess', extnValue = _ExtnValue}) ->
+    io:format("\tAuthority Info Access.~n", []);
+print_extension(#'Extension'{extnID = {1, 3, 6, 1, 4, 1, 11129, 2, 4, 2}, extnValue = _ExtnValue}) ->
+    io:format("\tSignedCertificateTimestampList.~n", []);
+print_extension(#'Extension'{extnID = ?'id-ce-basicConstraints', extnValue = ExtnValue}) ->
+    io:format("\tBasic constraints:~n"),
+    io:format("\t\tCA: ~p~n", [ExtnValue#'BasicConstraints'.cA]),
+    case ExtnValue#'BasicConstraints'.pathLenConstraint of
+        asn1_NOVALUE -> io:format("\t\tNo path length constraint.~n");
+        Val -> io:format("\t\tPath length constraint: ~tp~n", [Val])
+    end;
+print_extension(#'Extension'{extnID = ?'id-ce-certificatePolicies', extnValue = _ExtnValue}) ->
+    io:format("\tCertificate policies.~n", []);
+print_extension(#'Extension'{extnID = ?'id-ce-cRLDistributionPoints', extnValue = _ExtnValue}) ->
+    io:format("\tCRL distribution points.~n", []);
+print_extension(#'Extension'{extnID = ?'id-ce-extKeyUsage', extnValue = ExtnValue}) ->
+    io:format("\tExtended key usage: ~ts~n", [lists:join(", ", [oid2str(E) || E <- ExtnValue])]);
+print_extension(#'Extension'{extnID = ?'id-ce-keyUsage', extnValue = ExtnValue}) ->
+    io:format("\tKey Usage: ~ts~n", [lists:join(", ", [erlang:atom_to_list(E) || E <- ExtnValue])]);
+print_extension(#'Extension'{extnID = ?'id-ce-authorityKeyIdentifier'}) ->
+    io:format("\tAuthority Key Identifier.~n", []);
+print_extension(#'Extension'{extnID = ?'id-ce-subjectKeyIdentifier'}) ->
+    io:format("\tSubject Key Identifier.~n", []);
+print_extension(#'Extension'{extnID = ?'id-ce-subjectAltName'}) ->
+    io:format("\tSubject alternative names (see below for list).~n", []);
+print_extension(E) ->
+    io:format("\t~tp~n", [E#'Extension'.extnID]).
+
+oid2str({1, 3, 6, 1, 5, 5, 7, 3, 1}) -> "id-kp-serverAuth";
+oid2str({1, 3, 6, 1, 5, 5, 7, 3, 2}) -> "id-kp-clientAuth";
+oid2str(OID) -> io_lib:format("~tp", [OID]).
