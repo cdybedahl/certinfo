@@ -29,10 +29,12 @@ process(Host, Port) ->
             OTPCert = public_key:pkix_decode_cert(DERCert, otp),
             Cert = OTPCert#'OTPCertificate'.tbsCertificate,
             Algo = OTPCert#'OTPCertificate'.signatureAlgorithm,
+            Serial = Cert#'OTPTBSCertificate'.serialNumber,
             {HashName, CryptoName} = public_key:pkix_sign_types(
                 Algo#'SignatureAlgorithm'.algorithm
             ),
-            io:format("Algorithm:~n  ~s ~s~n~n", [
+            io:format("Serial number: 0x~.16B~n", [Serial]),
+            io:format("Algorithm: ~s ~s~n~n", [
                 string:to_upper(atom_to_list(HashName)),
                 string:to_upper(atom_to_list(CryptoName))
             ]),
@@ -137,26 +139,33 @@ print_extensions(Extensions) ->
     lists:foreach(fun print_extension/1, Extensions),
     io:format("~n").
 
-print_extension(#'Extension'{extnID = ?'id-pe-authorityInfoAccess', extnValue = _ExtnValue}) ->
-    io:format("\tAuthority Info Access.~n", []);
+print_extension(#'Extension'{extnID = {1, 3, 6, 1, 4, 1, 311, 21, 7}}) ->
+    io:format("\tMicrosoft szOID_CERTIFICATE_TEMPLATE~n");
+print_extension(#'Extension'{extnID = {1, 3, 6, 1, 4, 1, 311, 21, 10}}) ->
+    io:format("\tMicrosoft szOID_APPLICATION_CERT_POLICIES~n");
+print_extension(#'Extension'{extnID = ?'id-pe-authorityInfoAccess', extnValue = ExtnValue}) ->
+    io:format("\tAuthority Info Access:~n", []),
+    print_authority_info_access(ExtnValue);
 print_extension(#'Extension'{extnID = {1, 3, 6, 1, 4, 1, 11129, 2, 4, 2}, extnValue = _ExtnValue}) ->
     io:format("\tSignedCertificateTimestampList.~n", []);
 print_extension(#'Extension'{extnID = ?'id-ce-basicConstraints', extnValue = ExtnValue}) ->
     io:format("\tBasic constraints: "),
-    io:format(" CA ~p. ", [ExtnValue#'BasicConstraints'.cA]),
+    io:format("CA=~p. ", [ExtnValue#'BasicConstraints'.cA]),
     case ExtnValue#'BasicConstraints'.pathLenConstraint of
         asn1_NOVALUE -> io:format("No path length constraint.~n");
         Val -> io:format("Path length constraint: ~tp~n", [Val])
     end;
-print_extension(#'Extension'{extnID = ?'id-ce-certificatePolicies', extnValue = _ExtnValue}) ->
-    io:format("\tCertificate policies.~n", []);
-print_extension(#'Extension'{extnID = ?'id-ce-cRLDistributionPoints', extnValue = _ExtnValue}) ->
-    io:format("\tCRL distribution points.~n", []);
+print_extension(#'Extension'{extnID = ?'id-ce-certificatePolicies', extnValue = ExtnValue}) ->
+    io:format("\tCertificate policies:~n", []),
+    print_certificate_policies(ExtnValue);
+print_extension(#'Extension'{extnID = ?'id-ce-cRLDistributionPoints', extnValue = ExtnValue}) ->
+    io:format("\tCRL distribution points:~n", []),
+    print_crl_distribution(ExtnValue);
 print_extension(#'Extension'{extnID = ?'id-ce-extKeyUsage', extnValue = ExtnValue}) ->
     io:format("\tExtended key usage: ~ts~n", [lists:join(", ", [oid2str(E) || E <- ExtnValue])]);
 print_extension(#'Extension'{extnID = ?'id-ce-keyUsage', extnValue = ExtnValue}) ->
     io:format("\tKey Usage: ~ts~n", [lists:join(", ", [erlang:atom_to_list(E) || E <- ExtnValue])]);
-print_extension(#'Extension'{extnID = ?'id-ce-authorityKeyIdentifier'}) ->
+print_extension(#'Extension'{extnID = ?'id-ce-authorityKeyIdentifier', extnValue = _ExtnValue}) ->
     io:format("\tAuthority Key Identifier.~n", []);
 print_extension(#'Extension'{extnID = ?'id-ce-subjectKeyIdentifier'}) ->
     io:format("\tSubject Key Identifier.~n", []);
@@ -167,4 +176,40 @@ print_extension(E) ->
 
 oid2str({1, 3, 6, 1, 5, 5, 7, 3, 1}) -> "id-kp-serverAuth";
 oid2str({1, 3, 6, 1, 5, 5, 7, 3, 2}) -> "id-kp-clientAuth";
-oid2str(OID) -> io_lib:format("~tp", [OID]).
+oid2str({1, 3, 6, 1, 5, 5, 7, 48, 1}) -> "OCSP";
+oid2str({1, 3, 6, 1, 5, 5, 7, 48, 2}) -> "caIssuers";
+oid2str({2, 23, 140, 1, 2, 1}) -> "domain-validated";
+oid2str({1, 3, 6, 1, 4, 1, 44947, 1, 1, 1}) -> "ISRG Domain Validated";
+oid2str({2, 23, 140, 1, 1}) -> "EV Guidelines";
+oid2str({2, 16, 840, 1, 114412, 2, 1}) -> "DigiCert EV TLS";
+oid2str({2, 23, 140, 1, 2, 2}) -> "Organization validated";
+oid2str(OID) -> lists:join(".", lists:map(fun erlang:integer_to_list/1, erlang:tuple_to_list(OID))).
+
+print_crl_distribution(Data) ->
+    List = public_key:der_decode('CRLDistributionPoints', Data),
+    lists:foreach(
+        fun(L) ->
+            {fullName, [{uniformResourceIdentifier, URL}]} =
+                L#'DistributionPoint'.distributionPoint,
+            io:format("\t\t~ts~n", [URL])
+        end,
+        List
+    ).
+
+print_authority_info_access(ExtnValue) ->
+    lists:foreach(
+        fun(E) ->
+            Method = oid2str(E#'AccessDescription'.accessMethod),
+            {uniformResourceIdentifier, URL} = E#'AccessDescription'.accessLocation,
+            io:format("\t\t~ts ~ts~n", [Method, URL])
+        end,
+        ExtnValue
+    ).
+
+print_certificate_policies(ExtnValue) ->
+    lists:foreach(
+        fun(E) ->
+            io:format("\t\t~ts~n", [oid2str(E#'PolicyInformation'.policyIdentifier)])
+        end,
+        ExtnValue
+    ).
