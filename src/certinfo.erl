@@ -111,17 +111,19 @@ print_issuer({rdnSequence, Sequence}) ->
         [lists:join(", ", [rdnvalue_to_string(S) || S <- Sequence])]
     ).
 
-rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 3}, {_, CommonName}}]) ->
+rdnvalue_to_string([{'AttributeTypeAndValue', ?'id-at-commonName', {_, CommonName}}]) ->
     io_lib:format("CN=~ts", [CommonName]);
-rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 6}, Country}]) ->
+rdnvalue_to_string([{'AttributeTypeAndValue', ?'id-at-countryName', Country}]) ->
     io_lib:format("Country=~ts", [Country]);
-rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 7}, {_, Locality}}]) ->
+rdnvalue_to_string([{'AttributeTypeAndValue', ?'id-at-localityName', {_, Locality}}]) ->
     io_lib:format("Locality=~ts", [Locality]);
-rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 8}, {_, StateOrProvince}}]) ->
+rdnvalue_to_string([{'AttributeTypeAndValue', ?'id-at-stateOrProvinceName', {_, StateOrProvince}}]) ->
     io_lib:format("State=~ts", [StateOrProvince]);
-rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 10}, {_, Organization}}]) ->
+rdnvalue_to_string([{'AttributeTypeAndValue', ?'id-at-organizationName', {_, Organization}}]) ->
     io_lib:format("O=~ts", [Organization]);
-rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 11}, {_, OrganizationalUnit}}]) ->
+rdnvalue_to_string([
+    {'AttributeTypeAndValue', ?'id-at-organizationalUnitName', {_, OrganizationalUnit}}
+]) ->
     io_lib:format("OU=~ts", [OrganizationalUnit]);
 rdnvalue_to_string([{'AttributeTypeAndValue', OID, Data}]) ->
     io_lib:format("~tp=~tp", [OID, Data]).
@@ -174,8 +176,8 @@ print_extension(#'Extension'{extnID = ?'id-ce-subjectAltName'}) ->
 print_extension(E) ->
     io:format("\t~tp~n", [E#'Extension'.extnID]).
 
-oid2str({1, 3, 6, 1, 5, 5, 7, 3, 1}) -> "id-kp-serverAuth";
-oid2str({1, 3, 6, 1, 5, 5, 7, 3, 2}) -> "id-kp-clientAuth";
+oid2str(?'id-kp-serverAuth') -> "id-kp-serverAuth";
+oid2str(?'id-kp-clientAuth') -> "id-kp-clientAuth";
 oid2str({1, 3, 6, 1, 5, 5, 7, 48, 1}) -> "OCSP";
 oid2str({1, 3, 6, 1, 5, 5, 7, 48, 2}) -> "caIssuers";
 oid2str({2, 23, 140, 1, 2, 1}) -> "domain-validated";
