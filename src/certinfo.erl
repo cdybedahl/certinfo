@@ -30,6 +30,7 @@ process(Host, Port) ->
             Cert = OTPCert#'OTPCertificate'.tbsCertificate,
             Algo = OTPCert#'OTPCertificate'.signatureAlgorithm,
             Serial = Cert#'OTPTBSCertificate'.serialNumber,
+            Subject = Cert#'OTPTBSCertificate'.subject,
             {HashName, CryptoName} = public_key:pkix_sign_types(
                 Algo#'SignatureAlgorithm'.algorithm
             ),
@@ -45,7 +46,8 @@ process(Host, Port) ->
             TimeSince = time_diff(NotBefore),
             NotAfter = str2datetime(Validity#'Validity'.notAfter),
             InTime = time_diff(NotAfter),
-            print_issuer(Issuer),
+            print_rdn("Subject", Subject),
+            print_rdn("Issuer", Issuer),
             io:format("Validity:~n"),
             io:format("  Start: ~-32s (~s local time).~n", [TimeSince, datetime2str(NotBefore)]),
             io:format("  End:   ~-32s (~s local time).~n", [InTime, datetime2str(NotAfter)]),
@@ -105,10 +107,10 @@ time_diff(UT) ->
         end,
     io_lib:format(Format, [Days, H, M, S]).
 
-print_issuer({rdnSequence, Sequence}) ->
+print_rdn(Name, {rdnSequence, Sequence}) ->
     io:format(
-        "Issuer: ~ts~n~n",
-        [lists:join(", ", [rdnvalue_to_string(S) || S <- Sequence])]
+        "~s: ~ts~n~n",
+        [Name, lists:join(", ", [rdnvalue_to_string(S) || S <- Sequence])]
     ).
 
 rdnvalue_to_string([{'AttributeTypeAndValue', ?'id-at-commonName', {_, CommonName}}]) ->
