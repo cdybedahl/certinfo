@@ -123,6 +123,18 @@ rdnvalue_to_string([{'AttributeTypeAndValue', ?'id-at-stateOrProvinceName', {_, 
     io_lib:format("State=~ts", [StateOrProvince]);
 rdnvalue_to_string([{'AttributeTypeAndValue', ?'id-at-organizationName', {_, Organization}}]) ->
     io_lib:format("O=~ts", [Organization]);
+rdnvalue_to_string([{'AttributeTypeAndValue', ?'id-at-serialNumber', SerialNumber}]) ->
+    io_lib:format("Serial=~ts", [SerialNumber]);
+rdnvalue_to_string([{'AttributeTypeAndValue', {2, 5, 4, 15}, Category}]) ->
+    io_lib:format("Category=~ts", [Category]);
+rdnvalue_to_string([
+    {'AttributeTypeAndValue', {1, 3, 6, 1, 4, 1, 311, 60, 2, 1, 2}, JurisdictionState}
+]) ->
+    io_lib:format("JurisdictionState=~ts", [JurisdictionState]);
+rdnvalue_to_string([
+    {'AttributeTypeAndValue', {1, 3, 6, 1, 4, 1, 311, 60, 2, 1, 3}, JurisdictionCountry}
+]) ->
+    io_lib:format("JurisdictionCountry=~ts", [JurisdictionCountry]);
 rdnvalue_to_string([
     {'AttributeTypeAndValue', ?'id-at-organizationalUnitName', {_, OrganizationalUnit}}
 ]) ->
