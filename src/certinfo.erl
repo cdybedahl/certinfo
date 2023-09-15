@@ -142,12 +142,19 @@ rdnvalue_to_string([
 rdnvalue_to_string([{'AttributeTypeAndValue', OID, Data}]) ->
     io_lib:format("~tp=~tp", [OID, Data]).
 
-maybe_decode(N) ->
-    case string:find(N, "xn--") of
-        nomatch ->
-            N;
+maybe_decode(N0) ->
+    N1 =
+        case string:find(N0, "xn--") of
+            nomatch ->
+                N0;
+            _ ->
+                [idna:decode(N0), " (", N0, ")"]
+        end,
+    case inet:gethostbyname(N0) of
+        {error, nxdomain} ->
+            [N1, " (NXDOMAIN)"];
         _ ->
-            [idna:decode(N), " (", N, ")"]
+            N1
     end.
 
 print_extensions(Extensions) ->
