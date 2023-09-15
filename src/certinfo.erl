@@ -150,7 +150,14 @@ maybe_decode(N0) ->
             _ ->
                 [idna:decode(N0), " (", N0, ")"]
         end,
-    case inet:gethostbyname(N0) of
+    N2 =
+        case string:prefix(N0, "*.") of
+            nomatch ->
+                N0;
+            Val ->
+                Val
+        end,
+    case inet:gethostbyname(N2) of
         {error, nxdomain} ->
             [N1, " (NXDOMAIN)"];
         _ ->
